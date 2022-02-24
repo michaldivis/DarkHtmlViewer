@@ -17,7 +17,6 @@ namespace DarkHtmlViewer
     {
         private readonly ILogger<DarkHtmlViewer> _logger;
         private readonly Guid _instanceId;
-        private readonly DarkHtmlTempFileManager _fileManager;
 
         #region Bindable properties
 
@@ -68,8 +67,6 @@ namespace DarkHtmlViewer
 
             _instanceId = Guid.NewGuid();
 
-            _fileManager = new DarkHtmlTempFileManager(_instanceId, GetLogger<DarkHtmlTempFileManager>());
-
             _logger = GetLogger<DarkHtmlViewer>();
 
             _logger.LogDebug("DarkHtmlViewer-{InstanceId}: Initializing", _instanceId);
@@ -83,8 +80,7 @@ namespace DarkHtmlViewer
         private string _loadAfterInitialization = null;
         private async void InitializeWebView2()
         {
-            var initFilePath = _fileManager.GetFilePath();
-            _logger.LogDebug("DarkHtmlViewer-{InstanceId}: {Method}, init file: {InitFile}", _instanceId, nameof(InitializeWebView2), initFilePath);
+            _logger.LogDebug("DarkHtmlViewer-{InstanceId}: {Method}", _instanceId, nameof(InitializeWebView2));
 
             webView2.CoreWebView2InitializationCompleted += WebView2_CoreWebView2InitializationCompleted;
             webView2.NavigationStarting += WebView2_NavigationStarting;
@@ -95,8 +91,6 @@ namespace DarkHtmlViewer
             var env = await CoreWebView2Environment.CreateAsync(null, dataFolder);
 
             await webView2.EnsureCoreWebView2Async(env);
-
-            SetWebViewSource(initFilePath);
 
             webView2.Visibility = Visibility.Visible;
 
@@ -148,10 +142,7 @@ namespace DarkHtmlViewer
                 return;
             }
 
-            _fileManager.Create(html);
-            var htmlFilePath = _fileManager.GetFilePath();
-            _logger.LogDebug("DarkHtmlViewer-{InstanceId}: {Method}, file: {HtmlFilePath}", _instanceId, nameof(LoadHtmlContent), htmlFilePath);
-            SetWebViewSource(htmlFilePath);
+            webView2.NavigateToString(html);
         }
 
         #endregion
@@ -160,16 +151,15 @@ namespace DarkHtmlViewer
 
         private void WebView2_NavigationStarting(object sender, CoreWebView2NavigationStartingEventArgs e)
         {
-            var linkName = Path.GetFileName(e.Uri);
-
-            var isTempFileName = _fileManager.IsTempFilePath(linkName);
-
-            if (isTempFileName)
+            var isNavigatingToHtmlString = e.Uri?.StartsWith("data:text/html;") ?? false;
+            if (isNavigatingToHtmlString)
             {
                 return;
             }
 
             e.Cancel = true;
+
+            var linkName = Path.GetFileName(e.Uri);
 
             TriggerLinkClicked(linkName);
         }
@@ -348,18 +338,6 @@ namespace DarkHtmlViewer
             }
 
             return LoggerFactoryProvider.Invoke().CreateLogger<T>();
-        }
-
-        #endregion
-
-        #region Cleanup
-
-        /// <summary>
-        /// Removes the temporary files created by the control
-        /// </summary>
-        public void Cleanup()
-        {
-            _fileManager.TryDeleteCurrentTempFile();
         }
 
         #endregion

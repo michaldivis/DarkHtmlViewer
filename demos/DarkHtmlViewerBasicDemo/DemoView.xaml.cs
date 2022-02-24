@@ -2,7 +2,6 @@
 using DarkHelpers.Commands;
 using System;
 using System.Collections.Generic;
-using System.ComponentModel;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Windows;
@@ -111,13 +110,6 @@ namespace DarkHtmlViewerBasicDemo
             darkHtmlViewer.ScrollOnNextLoadCommand.TryExecute(link);
 
             LoadItem(item);
-        }
-
-        protected override void OnClosing(CancelEventArgs e)
-        {
-            base.OnClosing(e);
-
-            darkHtmlViewer.Cleanup();
         }
     }
 }
