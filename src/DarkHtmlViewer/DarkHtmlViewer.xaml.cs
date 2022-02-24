@@ -157,6 +157,10 @@ namespace DarkHtmlViewer
                 return;
             }
 
+            //TODO problem: when a link is clicked, the Url is about:blank#blocked and I cannot retreive the link
+
+            //TODO problem: when a link is clicked, the navigation is not canceled event though I'm calling e.Cancel = true;
+
             e.Cancel = true;
 
             var linkName = Path.GetFileName(e.Uri);
