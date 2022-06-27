@@ -91,9 +91,8 @@ namespace DarkHtmlViewer
             webView2.NavigationStarting += WebView2_NavigationStarting;
             webView2.NavigationCompleted += WebView2_NavigationCompleted;
 
-            var appDataDir = Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData);
-            var dataFolder = Path.Combine(appDataDir, "webView2_env");
-            var env = await CoreWebView2Environment.CreateAsync(null, dataFolder);
+            var environmentProvider = GetCoreWebView2EnvironmentProvider();
+            var env = await environmentProvider.CreateEnvironmentAsync();
 
             await webView2.EnsureCoreWebView2Async(env);
 
@@ -298,9 +297,8 @@ namespace DarkHtmlViewer
 
         #region Virtual host
 
-        private static VirtualHostNameToFolderMappingSettingsValidator _virtualAssetSettingsValidator;
-
-        private static VirtualHostNameToFolderMappingSettings VirtualAssetSettings;
+        private static readonly VirtualHostNameToFolderMappingSettingsValidator _virtualAssetSettingsValidator = new();
+        private static VirtualHostNameToFolderMappingSettings _virtualAssetSettings;
 
         /// <summary>
         /// Configure the virtual host to folder mapping
@@ -311,9 +309,7 @@ namespace DarkHtmlViewer
         {
             if (settings is null) throw new ArgumentNullException(nameof(settings));
 
-            var validator = _virtualAssetSettingsValidator ??= new VirtualHostNameToFolderMappingSettingsValidator();
-
-            var validationResult = validator.Validate(settings);
+            var validationResult = _virtualAssetSettingsValidator.Validate(settings);
 
             if (!validationResult.IsValid)
             {
@@ -321,22 +317,50 @@ namespace DarkHtmlViewer
                 throw new VirtualHostNameToFolderMappingSettingsException(firstError.PropertyName, firstError.ErrorMessage);
             }
 
-            VirtualAssetSettings = settings;
+            _virtualAssetSettings = settings;
         }
 
         private void SetupVirtualHostForAssets()
         {
-            if (VirtualAssetSettings is null)
+            if (_virtualAssetSettings is null)
             {
                 return;
             }
 
-            if(VirtualAssetSettings.IsEnabled is false)
+            if(_virtualAssetSettings.IsEnabled is false)
             {
                 return;
             }
 
-            webView2.CoreWebView2.SetVirtualHostNameToFolderMapping(VirtualAssetSettings.Hostname, VirtualAssetSettings.FolderPath, VirtualAssetSettings.AccessKind);
+            webView2.CoreWebView2.SetVirtualHostNameToFolderMapping(_virtualAssetSettings.Hostname, _virtualAssetSettings.FolderPath, _virtualAssetSettings.AccessKind);
+        }
+
+        #endregion
+
+        #region Environment settings
+
+        private static readonly DefaultCoreWebView2EnvironmentProvider _defaultCoreWebView2EnvironmentProvider = new();
+        private static ICoreWebView2EnvironmentProvider _coreWebView2EnvironmentProvider;
+
+        /// <summary>
+        /// Configure a custom Core WebView2 environment provider
+        /// </summary>
+        /// <exception cref="ArgumentNullException"></exception>
+        public static void ConfigureEnvironmentProvider(ICoreWebView2EnvironmentProvider coreWebView2EnvironmentProvider)
+        {
+            if (coreWebView2EnvironmentProvider is null) throw new ArgumentNullException(nameof(coreWebView2EnvironmentProvider));
+
+            _coreWebView2EnvironmentProvider = coreWebView2EnvironmentProvider;
+        }
+
+        private static ICoreWebView2EnvironmentProvider GetCoreWebView2EnvironmentProvider()
+        {
+            if(_coreWebView2EnvironmentProvider is null)
+            {
+                return _defaultCoreWebView2EnvironmentProvider;
+            }
+
+            return _coreWebView2EnvironmentProvider;
         }
 
         #endregion

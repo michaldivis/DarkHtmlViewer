@@ -24,6 +24,9 @@ namespace DarkHtmlViewerBasicDemo
                 FolderPath = htmlAssetsDir,
                 AccessKind = Microsoft.Web.WebView2.Core.CoreWebView2HostResourceAccessKind.Allow
             });
+
+            //use fixed version WebView2 runtime
+            //DarkHtmlViewer.DarkHtmlViewer.ConfigureEnvironmentProvider(new FixedVersionWebView2EnvironmentProvider("path/to/fixed/version/runtime"));
         }
     }
 }
